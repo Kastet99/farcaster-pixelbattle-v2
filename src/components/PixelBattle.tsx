@@ -149,7 +149,7 @@ export default function PixelBattle() {
           ) : selectedPixel ? (
             <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
               <h3 className="font-medium mb-2">Selected Pixel ({selectedPixel.x}, {selectedPixel.y})</h3>
-              <p className="mb-3">Price: {selectedPixel.price} ETH</p>
+              <p className="mb-3">Price: {selectedPixel.price.toFixed(4).replace('.', ',').replace(/,0+$/, ',0')} ETH</p>
               <div className="flex justify-between">
                 <Button variant="outline" onClick={() => setSelectedPixel(null)}>Cancel</Button>
                 <Button onClick={() => purchasePixel('#FF0000')}>Purchase & Paint</Button>

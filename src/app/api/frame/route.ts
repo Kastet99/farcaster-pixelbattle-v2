@@ -37,7 +37,7 @@ async function getPixelPrice(x: number, y: number) {
 async function updatePixelPrice(x: number, y: number) {
   const priceKey = `price:${x}:${y}`;
   const currentPrice = await getPixelPrice(x, y);
-  const newPrice = currentPrice * 1.1;
+  const newPrice = currentPrice * 1.1; // Increase price by exactly 10% per repaint
   
   await kv.set(priceKey, newPrice.toString());
   return newPrice;

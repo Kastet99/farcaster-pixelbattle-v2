@@ -6,10 +6,10 @@ const CANVAS_WIDTH = 32;
 const CANVAS_HEIGHT = 32;
 
 // Initial price in ETH
-const INITIAL_PRICE = 0.001;
+const INITIAL_PRICE = 0.0001;
 
 // Price increase factor (1.1x)
-const PRICE_INCREASE_FACTOR = 1.1;
+const PRICE_INCREASE_FACTOR = 1.1; // 10% increase per repaint
 
 // Mock storage for pixel data
 type Pixel = {
@@ -136,10 +136,11 @@ export async function purchasePixel(
     
     // Update the pixel
     const currentPrice = mockCanvas[y][x].price;
+    const newPrice = parseFloat((currentPrice * PRICE_INCREASE_FACTOR).toFixed(8)); // Fix precision issues
     mockCanvas[y][x] = {
       owner: walletAddress,
       color: color,
-      price: currentPrice * PRICE_INCREASE_FACTOR, // Increase price by 1.1x
+      price: newPrice,
       lastPurchaseTime: Date.now()
     };
     
@@ -215,10 +216,11 @@ export async function purchasePixelsBatch(
       const previousOwner = currentPixel.owner;
       
       // Update the pixel data
+      const newPrice = parseFloat((currentPixel.price * PRICE_INCREASE_FACTOR).toFixed(8)); // Fix precision issues
       mockCanvas[y][x] = {
         owner: address,
         color: color,
-        price: currentPixel.price * PRICE_INCREASE_FACTOR,
+        price: newPrice,
         lastPurchaseTime: Date.now()
       };
       

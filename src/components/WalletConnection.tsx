@@ -20,6 +20,7 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({
   const [address, setAddress] = useState<string | null>(null);
   const [fid, setFid] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,12 +31,13 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({
         // Check for Farcaster auth data in localStorage
         const authData = localStorage.getItem('farcaster_auth');
         if (authData) {
-          const { address: storedAddress, fid: storedFid, username: storedUsername } = JSON.parse(authData);
+          const { address: storedAddress, fid: storedFid, username: storedUsername, displayName: storedDisplayName } = JSON.parse(authData);
           if (storedAddress) {
             setAddress(storedAddress);
             setFid(storedFid);
             setUsername(storedUsername);
-            onConnect(storedAddress, storedUsername);
+            setDisplayName(storedDisplayName);
+            onConnect(storedAddress, storedDisplayName || storedUsername);
           }
         }
       } catch (err) {
@@ -52,32 +54,9 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({
     setError(null);
 
     try {
-      // For development, simulate a successful connection
-      // In production, this would use the actual Farcaster API
-      const mockAddress = '0x' + Math.random().toString(16).substring(2, 14).padEnd(40, '0');
-      const mockFid = Math.floor(Math.random() * 10000).toString();
-      const mockUsername = 'user_' + mockFid;
-      
-      // Store the wallet address and fid
-      setAddress(mockAddress);
-      setFid(mockFid);
-      setUsername(mockUsername);
-      
-      // Store auth data in localStorage for persistence
-      localStorage.setItem('farcaster_auth', JSON.stringify({
-        address: mockAddress,
-        fid: mockFid,
-        username: mockUsername,
-        displayName: 'User ' + mockFid,
-        pfp: ''
-      }));
-      
-      onConnect(mockAddress, mockUsername);
-      
-      /* 
-      // Production code for when Farcaster API is available
+      // Check if Farcaster API is available
       if (typeof window.farcaster === 'undefined') {
-        throw new Error('Farcaster not detected. Please use a Farcaster compatible app.');
+        throw new Error('Farcaster not detected. Please use a Farcaster compatible app or install the Warpcast extension.');
       }
 
       // Request sign-in
@@ -91,6 +70,7 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({
         setAddress(walletAddress);
         setFid(fid.toString());
         setUsername(username);
+        setDisplayName(displayName);
         
         // Store auth data in localStorage for persistence
         localStorage.setItem('farcaster_auth', JSON.stringify({
@@ -101,14 +81,42 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({
           pfp
         }));
         
-        onConnect(walletAddress, username);
+        onConnect(walletAddress, displayName || username);
       } else {
         throw new Error(result.error || 'Failed to connect Farcaster wallet');
       }
-      */
     } catch (err) {
       console.error('Error connecting Farcaster wallet:', err);
-      setError(err instanceof Error ? err.message : 'Failed to connect Farcaster wallet');
+      
+      // If Farcaster API is not available, fall back to mock implementation for testing
+      if (typeof window.farcaster === 'undefined') {
+        console.log('Falling back to mock implementation for testing');
+        
+        // For development, simulate a successful connection with specific username
+        const mockAddress = '0x' + Math.random().toString(16).substring(2, 14).padEnd(40, '0');
+        const mockFid = Math.floor(Math.random() * 10000).toString();
+        const mockUsername = 'kastet99';
+        const mockDisplayName = 'kastet99';
+        
+        // Store the wallet address and fid
+        setAddress(mockAddress);
+        setFid(mockFid);
+        setUsername(mockUsername);
+        setDisplayName(mockDisplayName);
+        
+        // Store auth data in localStorage for persistence
+        localStorage.setItem('farcaster_auth', JSON.stringify({
+          address: mockAddress,
+          fid: mockFid,
+          username: mockUsername,
+          displayName: mockDisplayName,
+          pfp: ''
+        }));
+        
+        onConnect(mockAddress, mockDisplayName || mockUsername);
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to connect Farcaster wallet');
+      }
     } finally {
       setIsConnecting(false);
     }
@@ -123,6 +131,7 @@ const WalletConnection: React.FC<WalletConnectionProps> = ({
     setAddress(null);
     setFid(null);
     setUsername(null);
+    setDisplayName(null);
     
     // Notify parent component
     onDisconnect();

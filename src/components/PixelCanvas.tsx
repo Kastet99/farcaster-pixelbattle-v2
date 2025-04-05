@@ -318,19 +318,15 @@ export default function PixelCanvas({
                   )}
                   {pixelStatus[`${x},${y}`] === 'pending' && (
                     <div 
-                      className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                      style={{ backgroundColor: 'rgba(255, 255, 255, 0.5)' }}
-                    >
-                      <div className="w-2/3 h-2/3 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
-                    </div>
+                      className="absolute inset-0 pointer-events-none"
+                      style={{ backgroundColor: 'rgba(255, 255, 255, 0.3)' }}
+                    />
                   )}
                   {pixelStatus[`${x},${y}`] === 'processing' && (
                     <div 
-                      className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                      style={{ backgroundColor: 'rgba(255, 255, 255, 0.3)' }}
-                    >
-                      <div className="w-1/2 h-1/2 text-orange-500">⏳</div>
-                    </div>
+                      className="absolute inset-0 pointer-events-none"
+                      style={{ backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
+                    />
                   )}
                   {pixelStatus[`${x},${y}`] === 'confirmed' && (
                     <div 

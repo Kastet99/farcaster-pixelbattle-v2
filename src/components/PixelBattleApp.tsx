@@ -5,7 +5,7 @@ import PixelCanvas from './PixelCanvas';
 import ColorPalette from './ColorPalette';
 import WalletConnection from './WalletConnection';
 import { Button } from './ui/Button';
-import { getPixelPrice, purchasePixel, getCanvasData, purchasePixelsBatch } from '~/services/contract.service';
+import { getPixelPrice, purchasePixel, getCanvasData, purchasePixelsBatch, getPixelColor } from '~/services/contract.service';
 
 // Add TypeScript declaration for window.ethereum
 declare global {
@@ -38,6 +38,7 @@ const PixelBattleApp: React.FC = () => {
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [pendingPixels, setPendingPixels] = useState<{x: number, y: number}[]>([]);
   const [pixelPrice, setPixelPrice] = useState<number | null>(null);
+  const [pixelPrices, setPixelPrices] = useState<Record<string, number>>({});
   const [notification, setNotification] = useState<{
     message: string;
     type: 'success' | 'error' | 'info';
@@ -61,7 +62,76 @@ const PixelBattleApp: React.FC = () => {
   const CANVAS_WIDTH = 32;
   const CANVAS_HEIGHT = 32;
   const PIXEL_SIZE = 12;
-
+  const STORAGE_KEY = 'pixelBattle_purchasedPixels';
+  
+  // Safe wrapper for localStorage operations
+  const safeLocalStorage = {
+    getItem: (key: string): string | null => {
+      try {
+        return typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+      } catch (e) {
+        console.error('Error accessing localStorage:', e);
+        return null;
+      }
+    },
+    setItem: (key: string, value: string): boolean => {
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(key, value);
+          return true;
+        }
+        return false;
+      } catch (e) {
+        console.error('Error writing to localStorage:', e);
+        return false;
+      }
+    }
+  };
+  
+  // Type for persisted purchased pixels
+  type PurchasedPixel = {
+    x: number;
+    y: number;
+    color: string;
+    timestamp: number;
+  };
+  
+  // Load purchased pixels from localStorage
+  const loadPurchasedPixels = (): PurchasedPixel[] => {
+    const storedPixels = safeLocalStorage.getItem(STORAGE_KEY);
+    if (!storedPixels) return [];
+    
+    try {
+      return JSON.parse(storedPixels);
+    } catch (e) {
+      console.error('Error parsing stored pixels:', e);
+      return [];
+    }
+  };
+  
+  // Save purchased pixels to localStorage
+  const savePurchasedPixels = (pixels: PurchasedPixel[]): void => {
+    safeLocalStorage.setItem(STORAGE_KEY, JSON.stringify(pixels));
+  };
+  
+  // Add a purchased pixel to localStorage
+  const addPurchasedPixel = (pixel: PurchasedPixel): void => {
+    const currentPixels = loadPurchasedPixels();
+    
+    // Check if this pixel already exists (by coordinates)
+    const existingIndex = currentPixels.findIndex(p => p.x === pixel.x && p.y === pixel.y);
+    
+    if (existingIndex >= 0) {
+      // Update existing pixel
+      currentPixels[existingIndex] = pixel;
+    } else {
+      // Add new pixel
+      currentPixels.push(pixel);
+    }
+    
+    savePurchasedPixels(currentPixels);
+  };
+  
   // Create a safe version of setTransactionQueue that handles potential errors
   const safeUpdateTransactionQueue = useCallback((updater: React.SetStateAction<{
     x: number;
@@ -98,6 +168,24 @@ const PixelBattleApp: React.FC = () => {
             canvasGrid[y][x] = colors[index] || '#FFFFFF';
             index++;
           }
+        }
+        
+        // Apply any persisted purchased pixels from localStorage
+        const purchasedPixels = loadPurchasedPixels();
+        if (purchasedPixels.length > 0) {
+          console.log(`Applying ${purchasedPixels.length} persisted pixels from localStorage`);
+          
+          purchasedPixels.forEach(pixel => {
+            if (pixel.x >= 0 && pixel.x < CANVAS_WIDTH && pixel.y >= 0 && pixel.y < CANVAS_HEIGHT) {
+              canvasGrid[pixel.y][pixel.x] = pixel.color;
+              
+              // Also mark these pixels as confirmed in the pixel status
+              setPixelStatus(prev => ({
+                ...prev,
+                [`${pixel.x},${pixel.y}`]: 'confirmed'
+              }));
+            }
+          });
         }
         
         setCanvasData(canvasGrid);
@@ -162,12 +250,11 @@ const PixelBattleApp: React.FC = () => {
   }, [CANVAS_HEIGHT, CANVAS_WIDTH]);
 
   // Handle wallet connection
-  const handleWalletConnect = useCallback((address: string, username?: string) => {
+  const handleWalletConnect = useCallback((address: string, displayName?: string) => {
     setWalletAddress(address);
     
-    // Use the username from the profile or default to 'User'
-    const displayName = username || 'User';
-    setUsername(displayName);
+    // Use the display name from Farcaster or a default
+    setUsername(displayName || 'User');
     
     // Fetch user's pixels
     fetchUserPixels(address);
@@ -282,15 +369,15 @@ const PixelBattleApp: React.FC = () => {
         try {
           const priceValue = parseFloat(price);
           if (!isNaN(priceValue) && isFinite(priceValue)) {
-            setPixelPrice(priceValue);
+            setPixelPrices(prev => ({ ...prev, [pixelKey]: priceValue }));
           } else {
             // If conversion fails, use default price
             console.warn('Invalid price format, using default:', price);
-            setPixelPrice(0.001);
+            setPixelPrices(prev => ({ ...prev, [pixelKey]: 0.0001 }));
           }
         } catch (parseErr) {
           console.warn('Error parsing price, using default:', parseErr);
-          setPixelPrice(0.001);
+          setPixelPrices(prev => ({ ...prev, [pixelKey]: 0.0001 }));
         }
       } catch (priceErr) {
         console.error('Error getting pixel price from contract:', priceErr);
@@ -308,7 +395,7 @@ const PixelBattleApp: React.FC = () => {
             throw new Error('Failed to parse pixel price response');
           }
           
-          setPixelPrice(data.price);
+          setPixelPrices(prev => ({ ...prev, [pixelKey]: data.price }));
         } catch (apiErr) {
           console.error('Error fetching pixel price from API:', apiErr);
           throw new Error('Failed to get pixel price from both contract and API');
@@ -433,7 +520,7 @@ const PixelBattleApp: React.FC = () => {
       });
       
       // Process each queued pixel purchase in sequence
-      const pixelsToPurchase = queuedTransactions.map(tx => ({ x: tx.x, y: tx.y, color: tx.color }));
+      const pixelsToPurchase: {x: number, y: number, color: string}[] = queuedTransactions.map(tx => ({ x: tx.x, y: tx.y, color: tx.color }));
       
       // Update all pixels to processing status
       setPixelStatus(prev => {
@@ -464,6 +551,11 @@ const PixelBattleApp: React.FC = () => {
             newStatus[`${pixel.x},${pixel.y}`] = 'confirmed';
           });
           return newStatus;
+        });
+        
+        // Add purchased pixels to localStorage
+        pixelsToPurchase.forEach(pixel => {
+          addPurchasedPixel({ x: pixel.x, y: pixel.y, color: pixel.color, timestamp: Date.now() });
         });
         
         // Show success notification
@@ -505,6 +597,11 @@ const PixelBattleApp: React.FC = () => {
           });
           
           return newStatus;
+        });
+        
+        // Add successful pixels to localStorage
+        successfulPixels.forEach(pixel => {
+          addPurchasedPixel({ x: pixel.x, y: pixel.y, color: pixel.color, timestamp: Date.now() });
         });
         
         // Show partial success notification
@@ -550,88 +647,132 @@ const PixelBattleApp: React.FC = () => {
     }
   }, [transactionQueue, walletAddress, fetchUserPixels, safeUpdateTransactionQueue]);
 
-  // Cancel pending purchase
-  const handleCancelPurchase = useCallback(() => {
-    console.log('Canceling purchase, resetting pixels');
+  // Function to cancel a specific pixel transaction
+  const cancelPixel = useCallback((x: number, y: number) => {
+    console.log('Canceling pixel:', x, y);
     
-    // Reset pixels to their original colors
-    if (tempPixelChanges.length > 0) {
-      // Create a deep copy of the canvas data
-      const newCanvasData = JSON.parse(JSON.stringify(canvasData));
+    // Find the pixel change to restore original color
+    const pixelChange = tempPixelChanges.find(p => p.x === x && p.y === y);
+    
+    // Create a deep copy of the canvas data
+    const newCanvasData = JSON.parse(JSON.stringify(canvasData));
+    
+    if (pixelChange) {
+      console.log('Found pixel change, restoring original color:', pixelChange.originalColor);
       
-      // Restore original colors
-      tempPixelChanges.forEach(({ x, y, originalColor }) => {
-        if (x >= 0 && x < CANVAS_WIDTH && y >= 0 && y < CANVAS_HEIGHT) {
-          newCanvasData[y][x] = originalColor;
-        }
-      });
+      // Ensure the row array is properly cloned before modifying
+      newCanvasData[y] = [...newCanvasData[y]];
+      // Restore the original color
+      newCanvasData[y][x] = pixelChange.originalColor;
+    } else {
+      console.warn('No pixel change found for', x, y);
       
-      // Update canvas
-      setCanvasData(newCanvasData);
+      // Even if we don't have a temp pixel change, try to restore from the API
+      getPixelColor(x, y)
+        .then(originalColor => {
+          console.log('Retrieved original color from API:', originalColor);
+          
+          // Create a deep copy of the canvas data
+          const apiCanvasData = JSON.parse(JSON.stringify(canvasData));
+          
+          // Ensure the row array is properly cloned before modifying
+          apiCanvasData[y] = [...apiCanvasData[y]];
+          // Restore the original color
+          apiCanvasData[y][x] = originalColor;
+          
+          // Update the canvas with the restored color
+          setCanvasData(apiCanvasData);
+        })
+        .catch(err => {
+          console.error('Failed to retrieve original color:', err);
+          // Fallback to white if we can't get the original color
+          const fallbackCanvasData = JSON.parse(JSON.stringify(canvasData));
+          fallbackCanvasData[y] = [...fallbackCanvasData[y]];
+          fallbackCanvasData[y][x] = '#FFFFFF';
+          setCanvasData(fallbackCanvasData);
+        });
+      
+      // For immediate feedback, set to white while API call is in progress
+      newCanvasData[y] = [...newCanvasData[y]];
+      newCanvasData[y][x] = '#FFFFFF';
     }
     
-    // Clear transaction queue for queued items
-    safeUpdateTransactionQueue(prev => {
-      if (!Array.isArray(prev) || prev.length === 0) return [];
-      
-      // Filter out queued transactions, keep completed or failed ones
-      return prev.filter(item => 
-        !item || 
-        typeof item !== 'object' || 
-        !('status' in item) || 
-        (item.status !== 'queued' && item.status !== 'processing')
-      );
+    // Update the canvas with the restored color (immediate update)
+    setCanvasData(newCanvasData);
+    
+    // Clear pixel status
+    setPixelStatus(prev => {
+      const newStatus = { ...prev };
+      delete newStatus[`${x},${y}`];
+      return newStatus;
     });
     
-    // Clear pixel status for all pending pixels
-    const newPixelStatus: Record<string, PixelStatus> = {};
-    Object.entries(pixelStatus).forEach(([key, status]) => {
-      if (status !== 'pending' && status !== 'processing') {
-        newPixelStatus[key] = status;
-      }
-    });
-    setPixelStatus(newPixelStatus);
+    // Remove from temp pixel changes
+    setTempPixelChanges(prev => 
+      prev.filter(p => !(p.x === x && p.y === y))
+    );
     
-    // Clear state
-    setTempPixelChanges([]);
+    // Remove from pending pixels
+    setPendingPixels(prev => prev.filter(p => !(p.x === x && p.y === y)));
+    
+    // Remove from transaction queue
+    setTransactionQueue(prev => prev.filter(tx => !(tx.x === x && tx.y === y)));
+    
+    // Remove the pixel price from pixelPrices
+    setPixelPrices(prev => {
+      const newPrices = { ...prev };
+      delete newPrices[`${x},${y}`];
+      return newPrices;
+    });
+    
+    // Force a re-render of the canvas
+    setTimeout(() => {
+      setCanvasData(current => JSON.parse(JSON.stringify(current)));
+    }, 50);
+  }, [canvasData, tempPixelChanges]);
+
+  // Cancel pending purchase (batch cancel)
+  const handleCancelPurchase = useCallback(() => {
+    console.log('Canceling all pending purchases');
+    
+    // Cancel each pending pixel
+    pendingPixels.forEach(pixel => {
+      cancelPixel(pixel.x, pixel.y);
+    });
+    
+    // Clear the pending pixels array
     setPendingPixels([]);
+    
+    // Clear the pixel price
     setPixelPrice(null);
     
-    // Show notification
-    setNotification({
-      message: 'Purchase canceled',
-      type: 'info'
-    });
-  }, [canvasData, tempPixelChanges, CANVAS_WIDTH, CANVAS_HEIGHT, safeUpdateTransactionQueue, pixelStatus]);
+    // Clear the pixel prices
+    setPixelPrices({});
+  }, [pendingPixels, cancelPixel]);
 
   // Toggle visibility of owned pixels
   const toggleOwnedPixelsVisibility = useCallback(() => {
     setShowOwnedPixels(prev => !prev);
   }, []);
 
-  // Format price to show zeros as a number
+  // Format price to show with comma as decimal separator (European format)
   const formatPrice = (price: number): string => {
     if (price === 0) return '0 ETH';
     
-    // Count leading zeros after decimal point
-    const priceStr = price.toString();
-    const decimalIndex = priceStr.indexOf('.');
+    // Fix JavaScript floating-point precision issues
+    // For example, 0.0001 * 1.1 might result in 0.00011000000000000002
+    const fixedPrice = parseFloat(price.toFixed(8));
     
-    if (decimalIndex === -1) return `${price} ETH`;
+    // Determine the appropriate number of decimal places based on price magnitude
+    const decimalPlaces = fixedPrice < 0.001 ? 6 : fixedPrice < 0.01 ? 5 : 4;
     
-    const decimalPart = priceStr.substring(decimalIndex + 1);
-    let leadingZeros = 0;
+    // Convert the price to string with European format (comma as decimal separator)
+    const priceStr = fixedPrice.toFixed(decimalPlaces).replace('.', ',');
     
-    for (let i = 0; i < decimalPart.length; i++) {
-      if (decimalPart[i] === '0') {
-        leadingZeros++;
-      } else {
-        break;
-      }
-    }
+    // Remove trailing zeros after the comma, but keep at least one decimal place
+    const formattedPrice = priceStr.replace(/,0+$/, ',0');
     
-    const significantPart = decimalPart.substring(leadingZeros);
-    return `${significantPart} × 10^-${leadingZeros + 1} ETH`;
+    return `${formattedPrice} ETH`;
   };
 
   // Render loading state
@@ -665,6 +806,9 @@ const PixelBattleApp: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
             <h1 className="text-2xl font-bold">Pixel Battle</h1>
+            {username && (
+              <p className="text-purple-600 font-medium">Hi {username}.</p>
+            )}
             <p className="text-gray-600">Paint pixels, own the canvas, win prizes!</p>
             <p className="text-sm text-gray-500 mt-1">
               Contract: <a 
@@ -795,43 +939,20 @@ const PixelBattleApp: React.FC = () => {
                       <span>
                         Pixel ({tx.x}, {tx.y}) - 
                         {tx.status === 'queued' && 'Queued'}
-                        {tx.status === 'processing' && 'Processing...'}
+                        {tx.status === 'processing' && (
+                          <span className="flex items-center">
+                            Processing
+                            <div className="ml-1 w-4 h-4 rounded-full border-2 border-yellow-500 border-t-transparent animate-spin" />
+                          </span>
+                        )}
                         {tx.status === 'completed' && 'Completed'}
                         {tx.status === 'failed' && 'Failed'}
                       </span>
                       {tx.status === 'queued' && (
                         <button 
                           onClick={() => {
-                            console.log('Canceling transaction for pixel:', tx.x, tx.y);
-                            
-                            // Reset the pixel on the canvas to its original color
-                            const pixelChange = tempPixelChanges.find(p => p.x === tx.x && p.y === tx.y);
-                            if (pixelChange) {
-                              console.log('Found pixel change, resetting color from', canvasData[tx.y][tx.x], 'to', pixelChange.originalColor);
-                              
-                              // Create a deep copy of the canvas data
-                              const newCanvasData = JSON.parse(JSON.stringify(canvasData));
-                              newCanvasData[tx.y] = [...newCanvasData[tx.y]];
-                              newCanvasData[tx.y][tx.x] = pixelChange.originalColor;
-                              setCanvasData(newCanvasData);
-                              
-                              // Remove from temp pixel changes
-                              setTempPixelChanges(prev => 
-                                prev.filter(p => !(p.x === tx.x && p.y === tx.y))
-                              );
-                              
-                              // Clear pixel status
-                              setPixelStatus(prev => {
-                                const newStatus = { ...prev };
-                                delete newStatus[`${tx.x},${tx.y}`];
-                                return newStatus;
-                              });
-                            } else {
-                              console.warn('No pixel change found for', tx.x, tx.y);
-                            }
-                            
-                            // Remove from transaction queue (do this last to ensure we have access to tx data)
-                            setTransactionQueue(prev => prev.filter((_, i) => i !== index));
+                            // Use the unified cancelPixel function
+                            cancelPixel(tx.x, tx.y);
                           }}
                           className="text-gray-500 hover:text-red-700"
                           title="Cancel this transaction"
@@ -846,7 +967,7 @@ const PixelBattleApp: React.FC = () => {
             )}
             
             {/* Purchase Dialog */}
-            {pendingPixels.length > 0 && pixelPrice !== null && (
+            {pendingPixels.length > 0 && (
               <div className="bg-gray-100 p-4 mt-4 rounded-lg" data-testid="purchase-dialog">
                 <h3 className="text-lg font-medium mb-2">Confirm Purchase</h3>
                 <p>
@@ -856,7 +977,7 @@ const PixelBattleApp: React.FC = () => {
                     </span>
                   ))}
                   <br />
-                  Price: {formatPrice(pixelPrice)}
+                  <span className="font-medium">Total price: {formatPrice(pendingPixels.reduce((acc, pixel) => acc + pixelPrices[`${pixel.x},${pixel.y}`], 0))}</span>
                 </p>
                 <div className="flex gap-2 mt-3">
                   <Button 
