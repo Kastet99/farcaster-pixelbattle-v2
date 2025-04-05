@@ -4,6 +4,10 @@
 
 A competitive pixel-based game built on Farcaster Frames where users paint pixels on a shared canvas with an escalating price model.
 
+Demo video: https://youtu.be/qGl8iPjmUq4
+
+Deck: https://docs.google.com/presentation/d/1O8j3xgpsHZmoiox4V0t9OBhxyTx_gZBTg2gG-RgKyBs/edit?usp=sharing
+
 ## Features
 
 - 32×32 pixel grid (1,024 pixels total) with a 16-color palette
