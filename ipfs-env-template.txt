@@ -1,0 +1,12 @@
+# IPFS Configuration
+# Get your NFT.Storage API token from https://nft.storage/
+NFT_STORAGE_TOKEN=your_nft_storage_api_token_here
+
+# API key for canvas snapshot creation (for security)
+CANVAS_SNAPSHOT_API_KEY=your_secure_api_key_here
+
+# Contract address on Base Sepolia
+NEXT_PUBLIC_CONTRACT_ADDRESS=0xbBdfF3945EB3cBf507d0dd4faAa933aC0A186BC4
+
+# Base Sepolia RPC URL
+NEXT_PUBLIC_RPC_URL=https://sepolia.base.org

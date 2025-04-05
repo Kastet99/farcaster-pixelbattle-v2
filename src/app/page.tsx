@@ -1,5 +1,5 @@
-import { Metadata } from "next";
 import App from "./app";
+import type { Metadata } from "next/types";
 
 const appUrl = process.env.NEXT_PUBLIC_URL;
 

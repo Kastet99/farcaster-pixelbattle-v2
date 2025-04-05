@@ -1,0 +1,7 @@
+PRIVATE_KEY=cd491d2a308676368a9fa7a2518847002057bf5a722702de0f4a528452f47cb4
+
+# This API key format might be incorrect - BaseScan API keys typically don't have this format
+# You may need to register on BaseScan to get a valid API key
+BASESCAN_API_KEY=A3P2M5QQ6U7G1QZ7HS1293YYGY4BVWM36B
+
+DEVELOPER_WALLET=0xB811ad1E34Cfc4B214B3f22815f50a431a46Cc6b

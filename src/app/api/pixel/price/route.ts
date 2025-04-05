@@ -1,13 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { kv } from '~/lib/kv';
+import { getPixelPrice as getContractPixelPrice } from '~/services/contract.service';
 
-// Get current pixel price
+// Get current pixel price from the smart contract
 async function getPixelPrice(x: number, y: number) {
-  const priceKey = `price:${x}:${y}`;
-  const price = await kv.get(priceKey);
-  
-  // Initial price is 0.0000001 ETH
-  return price ? parseFloat(price) : 0.0000001;
+  try {
+    // Try to get the price from the smart contract first
+    const contractPrice = await getContractPixelPrice(x, y);
+    return parseFloat(contractPrice);
+  } catch (error) {
+    console.error('Error getting price from contract:', error);
+    
+    // Fallback to local KV store if contract call fails
+    const priceKey = `price:${x}:${y}`;
+    const price = await kv.get(priceKey);
+    
+    // Initial price is 0.0000001 ETH
+    return price ? parseFloat(price) : 0.0000001;
+  }
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -28,7 +38,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ 
       price,
       x,
-      y
+      y,
+      source: 'smart_contract'
     });
   } catch (error) {
     console.error('Error fetching pixel price:', error);

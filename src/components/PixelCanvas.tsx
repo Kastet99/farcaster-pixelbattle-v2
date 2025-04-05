@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { PASTEL_COLORS } from './ColorPalette';
+import { BASIC_COLORS } from './ColorPalette';
+
+// Define the PixelStatus type to match the one in PixelBattleApp
+type PixelStatus = 'pending' | 'processing' | 'confirmed' | 'failed';
 
 interface PixelCanvasProps {
   width: number;
@@ -13,6 +16,7 @@ interface PixelCanvasProps {
   userOwnedPixels?: {x: number, y: number}[];
   highlightOwned?: boolean;
   selectedColor?: string;
+  pixelStatus?: {[key: string]: PixelStatus};
 }
 
 /**
@@ -29,7 +33,8 @@ export default function PixelCanvas({
   onPixelClick,
   userOwnedPixels = [],
   highlightOwned = false,
-  selectedColor = PASTEL_COLORS[0].hex
+  selectedColor = BASIC_COLORS[0].hex,
+  pixelStatus = {}
 }: PixelCanvasProps) {
   // Canvas state
   const [pixelColors, setPixelColors] = useState<string[][]>(() => {
@@ -304,8 +309,39 @@ export default function PixelCanvas({
                 >
                   {owned && highlightOwned && (
                     <div 
-                      className="absolute inset-0 border-2 border-yellow-400 pointer-events-none"
-                      style={{ boxShadow: '0 0 4px rgba(255, 215, 0, 0.6)' }}
+                      className="absolute inset-0 pointer-events-none"
+                      style={{ 
+                        boxShadow: '0 0 8px 2px rgba(255, 215, 0, 0.7) inset',
+                        background: 'radial-gradient(circle, rgba(255,215,0,0.2) 0%, rgba(255,215,0,0) 70%)'
+                      }}
+                    />
+                  )}
+                  {pixelStatus[`${x},${y}`] === 'pending' && (
+                    <div 
+                      className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                      style={{ backgroundColor: 'rgba(255, 255, 255, 0.5)' }}
+                    >
+                      <div className="w-2/3 h-2/3 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+                    </div>
+                  )}
+                  {pixelStatus[`${x},${y}`] === 'processing' && (
+                    <div 
+                      className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                      style={{ backgroundColor: 'rgba(255, 255, 255, 0.3)' }}
+                    >
+                      <div className="w-1/2 h-1/2 text-orange-500">⏳</div>
+                    </div>
+                  )}
+                  {pixelStatus[`${x},${y}`] === 'confirmed' && (
+                    <div 
+                      className="absolute inset-0 pointer-events-none"
+                      style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+                    />
+                  )}
+                  {pixelStatus[`${x},${y}`] === 'failed' && (
+                    <div 
+                      className="absolute inset-0 pointer-events-none"
+                      style={{ backgroundColor: 'rgba(255, 0, 0, 0.1)' }}
                     />
                   )}
                 </div>

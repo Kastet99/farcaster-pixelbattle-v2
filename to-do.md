@@ -7,25 +7,21 @@
 
 ## Frontend Development
 - [x] Build 32×32 pixel canvas interface
-- [ ] Create 16-color palette selector
-  - [ ] 4 primary colors
-  - [ ] 4 secondary colors
-  - [ ] 4 earth tones
-  - [ ] Black, white, light gray, dark gray
+- [x] Create palette selector
 - [x] Develop pixel selection and purchase flow
-- [ ] Implement optimistic rendering for pixel updates
+- [x] Implement optimistic rendering for pixel updates
 - [x] Design user dashboard showing owned pixels
 - [ ] Create transaction history and earnings display
 - [ ] Add visual indication of owned pixels on canvas
 
 ## Smart Contract Development
-- [ ] Create pixel ownership and transaction contract
+- [x] Create pixel ownership and transaction contract on Base Sepolia
 - [x] Implement 1.1x price escalation mechanism
 - [x] Set up revenue split logic (84% to previous owner, 15% to prize bank, 1% to developer)
-- [ ] Program game state management (24-hour inactivity ending condition)
-- [ ] Implement winner calculation and prize distribution
-- [ ] Test contract functions and game mechanics
-- [ ] Complete security audit of smart contracts
+- [x] Program game state management (24-hour inactivity ending condition)
+- [x] Implement winner calculation and prize distribution
+- [x] Test contract functions and game mechanics
+- [x] Complete security audit of smart contracts
 
 ## Farcaster Integration
 - [ ] Build notification system for:
@@ -36,14 +32,14 @@
 
 ## Backend Services
 - [x] Develop canvas state management system
-- [ ] Set up IPFS integration for visual canvas representation
-- [ ] Create APIs for game statistics and user information
-- [ ] Implement webhook processing for Farcaster events
-- [ ] Create monitoring system for game activity
+- [x] Set up IPFS integration for visual canvas representation
+- [ ] Create API endpoints for game statistics
+- [ ] Implement webhook processing for blockchain events
+- [ ] Set up monitoring system for game state
 
 ## Testing & Deployment
-- [ ] Test smart contracts thoroughly
-- [ ] Simulate economic model to validate price escalation
-- [ ] Deploy to Base network (Ethereum L2)
-- [ ] Conduct beta testing with limited user group
-- [ ] Fix issues identified during beta testing
+- [x] Deploy smart contracts to Base Sepolia testnet
+- [ ] Conduct economic model simulation
+- [ ] Perform comprehensive testing of game mechanics
+- [ ] Deploy to production environment
+- [ ] Launch beta testing phase
